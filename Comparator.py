@@ -12,6 +12,10 @@ def __SubFolder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders, MissingF
 			continue
 
 
+		if file_Path2 in MissingFiles:
+			continue
+
+
 		if not os.path.isdir(file_Path2):
 			MissingFiles.append(file_Path2 + " is a File AND " + file_Path1 + " is a Folder!!" )
 			continue
@@ -46,7 +50,7 @@ def Folder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders = True):
 
 	if len(MissingFiles) != 0:
 		print("\tFolder Tree: Failed")
-		print("\tFiles not found:")
+		print("\tContent not found:")
 		for file in MissingFiles:
 			print("\t\t" + file)
 	else:
@@ -120,8 +124,8 @@ def Folder_Hash_Check(Folder1_Path, Folder2_Path, CheckSubFolders = True):
 
 
 if __name__ == '__main__':
-	Folder1_Name = "Folde1"
-	Folder2_Name = "Folde2"
+	Folder1_Name = "Folder1"
+	Folder2_Name = "Folder2"
 
 
 	print("\n\n")
