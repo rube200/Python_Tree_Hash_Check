@@ -1,136 +1,106 @@
-import hashlib, os
+from hashlib import sha256
+from os import linesep, path, walk
+
+BUFFER_SIZE = 65536
 
 
+def main() -> None:
+    try:
+        path1 = input(f'Path to file/folder 1: {linesep}')
+        if not path1:
+            print('Path 1 is empty!')
+            return
 
-def __SubFolder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders, MissingFiles, CheckedFolders):
-	for file in os.listdir(Folder1_Path):
-		file_Path1 = os.path.join(Folder1_Path, file)
-		file_Path2 = os.path.join(Folder2_Path, file)
+        if not path.exists(path1):
+            print('Path 1 does not exist!')
+            return
 
+        path2 = input(f'Path to file/folder 2: {linesep}')
+        if not path2:
+            print('Path 2 path is empty!')
+            return
 
-		if not os.path.isdir(file_Path1) or file in CheckedFolders:
-			continue
+        if not path.exists(path1):
+            print('Path 2 does not exist!')
+            return
 
+        if path1 == path2:
+            print('Paths are the same!')
+            return
 
-		if file_Path2 in MissingFiles:
-			continue
+        if path.isdir(path1) and not path.isdir(path2) or not path.isdir(path1) and path.isdir(path2):
+            print('Different types of path, one is a file and the other is a folder!')
+            return
 
+        print_hash(path1, path2)
 
-		if not os.path.isdir(file_Path2):
-			MissingFiles.append(file_Path2 + " is a File AND " + file_Path1 + " is a Folder!!" )
-			continue
-
-
-		CheckedFolders.append(file_Path1)
-		__Folder_Tree_Check(file_Path1, file_Path2, CheckSubFolders, MissingFiles, CheckedFolders)
-	return
-
-
-def __Folder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders, MissingFiles = [], CheckedFolders = []):
-	Folder1_Files = os.listdir(Folder1_Path)
-	Folder2_Files = os.listdir(Folder2_Path)
-
-
-	MissingFiles += [os.path.join(Folder2_Path, f) for f in Folder1_Files if not f in Folder2_Files and os.path.join(Folder2_Path, f) not in MissingFiles]
-
-
-	if CheckSubFolders:
-		__SubFolder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders, MissingFiles, CheckedFolders)
-	return
+    except KeyboardInterrupt:
+        print(f'{linesep}Operation interrupted by user!')
+        return
 
 
-def Folder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders = True):
-	MissingFiles = []
-	CheckedFolders = []
+def print_hash(path1: str, path2: str) -> None:
+    if path.isfile(path1):
+        hash_file1 = hash_file(path1)
+        hash_file2 = hash_file(path2)
+        if hash_file1 == hash_file2:
+            print(f'{linesep}Hashes are the same!')
+            return
+
+        print(f'{linesep}Hashes are different!')
+        print(f'\'{hash_file1}\' != \'{hash_file2}\'')
+        return
+
+    hash_path1 = create_folder_hash_map(path1)
+    hash_path2 = create_folder_hash_map(path2)
+    if hash_path1 == hash_path2:
+        print(f'{linesep}Hashes are the same!')
+        return
+
+    hash1_keys = hash_path1.keys()
+    hash2_keys = hash_path2.keys()
+
+    missing_files = sorted(hash2_keys - hash1_keys, key=str.casefold)
+    if missing_files:
+        print(f'{linesep}Missing files in folder1: ')
+        for file in missing_files:
+            print(f'  \'{file}\'')
+
+    missing_files = sorted(hash1_keys - hash2_keys, key=str.casefold)
+    if missing_files:
+        print(f'{linesep}Missing files in folder2: ')
+        for file in missing_files:
+            print(f'  \'{file}\'')
+
+    common_files = sorted(hash1_keys & hash2_keys, key=str.casefold)
+    print(f'{linesep}Different hashes: ')
+    for file in common_files:
+        hash1 = hash_path1[file]
+        hash2 = hash_path2[file]
+        if hash1 != hash2:
+            print(f'  \'{file}\': \'{hash1}\' != \'{hash2}\'')
 
 
-	__Folder_Tree_Check(Folder2_Path, Folder1_Path, CheckSubFolders, MissingFiles, CheckedFolders)
-	__Folder_Tree_Check(Folder1_Path, Folder2_Path, CheckSubFolders, MissingFiles, CheckedFolders)
+def create_folder_hash_map(folder_path: str) -> dict:
+    hash_tree = {}
+    for root, _, files in walk(folder_path):
+        for file in files:
+            file_path = path.join(root, file)
+            rel_path = path.relpath(file_path, folder_path)
+            hash_tree[rel_path] = hash_file(file_path)
+    return hash_tree
 
 
-	if len(MissingFiles) != 0:
-		print("\tFolder Tree: Failed")
-		print("\tContent not found:")
-		for file in MissingFiles:
-			print("\t\t" + file)
-	else:
-		print("\tFolder Tree: OK")
-	return
-
-
-#os.walk()
-def __Folder_Hash_Check(Folder1_Name, Folder2_Name, CheckSubFolders = True, HashFails = [], Current_Path = ""):
-	Folder1_Path = os.path.join(Folder1_Name, Current_Path)
-	for file in os.listdir(Folder1_Path):
-		file_BasePath = os.path.join(Current_Path, file)
-		file_Path1 = os.path.join(Folder1_Name, file_BasePath)
-		file_Path2 = os.path.join(Folder2_Name, file_BasePath)
-		
-
-		if os.path.isdir(file_Path1):
-			if CheckSubFolders:
-				__Folder_Hash_Check(Folder1_Name, Folder2_Name, CheckSubFolders, HashFails, file_BasePath)
-			continue
-
-
-		if not os.path.exists(file_Path2) or os.path.isdir(file_Path2):
-			continue
-
-
-
-		Hash = hashlib.sha1()
-		Original_File = open(file_Path1, "rb")
-		Original_Content = Original_File.read()
-
-		Hash.update(Original_Content)
-		Original_File.close()
-		Original_Hash = Hash.hexdigest()
-		
-		
-
-		Hash = hashlib.sha1()
-		Modded_File = open(file_Path2, "rb")
-		Modded_Content = Modded_File.read()
-		
-		Hash.update(Modded_Content)
-		Modded_File.close()
-		Modded_Hash = Hash.hexdigest()
-		
-
-
-		if Original_Hash != Modded_Hash:
-			HashFails.append(file_BasePath + " > (" + Folder1_Name + ") " + Original_Hash + " || (" + Folder2_Name + ") " + Modded_Hash)
-			continue
-	return
-
-
-def Folder_Hash_Check(Folder1_Path, Folder2_Path, CheckSubFolders = True):
-	HashFails = []
-
-
-	__Folder_Hash_Check(Folder1_Path, Folder2_Path, CheckSubFolders, HashFails)
-
-
-	if len(HashFails) != 0:
-		print("\tHash: Failed")
-		print("\tFiles:")
-		for file in HashFails:
-			print("\t\t" + file)
-	else:
-		print("\tHash: OK")
-	return
-
-
+def hash_file(file_path: str) -> str:
+    hasher = sha256()
+    with open(file_path, 'rb') as f:
+        while True:
+            data = f.read(BUFFER_SIZE)
+            if not data:
+                break
+            hasher.update(data)
+    return hasher.hexdigest()
 
 
 if __name__ == '__main__':
-	Folder1_Name = "Folder1"
-	Folder2_Name = "Folder2"
-
-
-	print("\n\n")
-	Folder_Tree_Check(Folder1_Name, Folder2_Name, True)
-
-
-	print("\n\n")
-	Folder_Hash_Check(Folder1_Name, Folder2_Name, True)
+    main()
